@@ -22,6 +22,7 @@ terraform {
 }
 
 provider "azurerm" {
+  storage_use_azuread = true
   features {
     resource_group {
       prevent_deletion_if_contains_resources = false
@@ -36,7 +37,7 @@ provider "azurerm" {
 }
 
 locals {
-  location = "swedencentral"
+  location = "australiaeast"
 }
 
 data "azurerm_client_config" "current" {}
@@ -95,6 +96,7 @@ module "test" {
 
   location            = local.location
   resource_group_name = "ai-lz-rg-standalone-byo-vnet-${substr(module.naming.unique-seed, 0, 5)}"
+  #resource_group_name = "ai-lz-rg-default-ivrhi-4"
   vnet_definition = {
     existing_byo_vnet = {
       this_vnet = {
@@ -109,7 +111,7 @@ module "test" {
       enable_diagnostic_settings = false
     }
     ai_model_deployments = {
-      "gpt-4o" = {
+      "gpt-4.1" = {
         name = "gpt-4.1"
         model = {
           format  = "OpenAI"
@@ -163,6 +165,10 @@ module "test" {
         }
       }
     }
+  }
+  apim_definition = {
+    publisher_email = "DoNotReply@exampleEmail.com"
+    publisher_name  = "Azure API Management"
   }
   app_gateway_definition = {
     backend_address_pools = {

@@ -22,6 +22,7 @@ terraform {
 }
 
 provider "azurerm" {
+  storage_use_azuread = true
   features {
     resource_group {
       prevent_deletion_if_contains_resources = false
@@ -67,7 +68,7 @@ data "http" "ip" {
 }
 
 locals {
-  location = "swedencentral" #temporarily pinning on australiaeast for capacity limits in test subscription.
+  location = "australiaeast"
 }
 
 data "azurerm_client_config" "current" {}
@@ -93,6 +94,7 @@ module "test" {
 
   location            = local.location
   resource_group_name = "ai-lz-rg-standalone-${substr(module.naming.unique-seed, 0, 5)}"
+  #resource_group_name = "ai-lz-rg-default-ivrhi-3"
   vnet_definition = {
     name          = "ai-lz-vnet-standalone"
     address_space = ["192.168.0.0/20"] # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
@@ -104,7 +106,7 @@ module "test" {
       enable_diagnostic_settings = false
     }
     ai_model_deployments = {
-      "gpt-4o" = {
+      "gpt-4.1" = {
         name = "gpt-4.1"
         model = {
           format  = "OpenAI"
@@ -166,6 +168,10 @@ module "test" {
         }
       }
     }
+  }
+  apim_definition = {
+    publisher_email = "DoNotReply@exampleEmail.com"
+    publisher_name  = "Azure API Management"
   }
   app_gateway_definition = {
     backend_address_pools = {

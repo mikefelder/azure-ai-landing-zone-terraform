@@ -20,6 +20,9 @@ module "avm_res_keyvault_vault" {
   public_network_access_enabled = var.genai_key_vault_definition.public_network_access_enabled
   role_assignments              = local.genai_key_vault_role_assignments
   tags                          = var.genai_key_vault_definition.tags
+  wait_for_rbac_before_contact_operations = {
+    create = "60s"
+  }
   wait_for_rbac_before_key_operations = {
     create = "60s"
   }
@@ -36,6 +39,15 @@ resource "azurerm_role_assignment" "deployment_user_kv_admin" {
   principal_id         = data.azurerm_client_config.current.object_id
   scope                = module.avm_res_keyvault_vault.resource_id
   role_definition_name = "Key Vault Administrator"
+}
+
+resource "time_sleep" "wait_for_kv_rbac" {
+  create_duration = "60s"
+  triggers = {
+    role_assignment = azurerm_role_assignment.deployment_user_kv_admin.id
+  }
+
+  depends_on = [azurerm_role_assignment.deployment_user_kv_admin]
 }
 
 #TODO:
