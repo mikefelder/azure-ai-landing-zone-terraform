@@ -209,10 +209,44 @@ module "firewall_network_rule_collection_group" {
 }
 
 
+module "bastion_nsg" {
+  source  = "Azure/avm-res-network-networksecuritygroup/azurerm"
+  version = "0.5.0"
+  count   = var.bastion_definition.deploy ? 1 : 0
+
+  location            = azurerm_resource_group.this.location
+  name                = "${local.bastion_name}-nsg"
+  resource_group_name = var.bastion_definition.resource_group_name != null ? var.bastion_definition.resource_group_name : azurerm_resource_group.this.name
+}
+
+# Bastion NSG rules must be created after the NSG but use known values, so they can be defined inline.
+resource "azurerm_network_security_rule" "bastion" {
+  for_each = var.bastion_definition.deploy ? local.bastion_nsg_rules : {}
+
+  access                                     = each.value.access
+  direction                                  = each.value.direction
+  name                                       = each.value.name
+  network_security_group_name                = module.bastion_nsg[0].resource.name
+  priority                                   = each.value.priority
+  protocol                                   = each.value.protocol
+  resource_group_name                        = module.bastion_nsg[0].resource.resource_group_name
+  description                                = try(each.value.description, null)
+  destination_address_prefix                 = try(each.value.destination_address_prefix, null)
+  destination_address_prefixes               = try(each.value.destination_address_prefixes, null)
+  destination_application_security_group_ids = try(each.value.destination_application_security_group_ids, null)
+  destination_port_range                     = try(each.value.destination_port_range, null)
+  destination_port_ranges                    = try(each.value.destination_port_ranges, null)
+  source_address_prefix                      = try(each.value.source_address_prefix, null)
+  source_address_prefixes                    = try(each.value.source_address_prefixes, null)
+  source_application_security_group_ids      = try(each.value.source_application_security_group_ids, null)
+  source_port_range                          = try(each.value.source_port_range, null)
+  source_port_ranges                         = try(each.value.source_port_ranges, null)
+}
+
 module "azure_bastion" {
   source  = "Azure/avm-res-network-bastionhost/azurerm"
   version = "0.7.2"
-  count   = var.flag_platform_landing_zone && var.bastion_definition.deploy ? 1 : 0
+  count   = var.bastion_definition.deploy ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = local.bastion_name
@@ -224,6 +258,8 @@ module "azure_bastion" {
   sku   = var.bastion_definition.sku
   tags  = var.bastion_definition.tags
   zones = var.bastion_definition.zones
+
+  depends_on = [azurerm_network_security_rule.bastion]
 }
 
 module "private_dns_zones" {

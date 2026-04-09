@@ -214,12 +214,17 @@ module "test" {
     }
   }
   bastion_definition = {
+    deploy = true
   }
   container_app_environment_definition = {
     enable_diagnostic_settings = false
   }
   enable_telemetry           = var.enable_telemetry
-  flag_platform_landing_zone = true
+  flag_platform_landing_zone = false
+  jumpvm_definition = {
+    deploy = true
+    sku    = module.vm_sku.sku
+  }
   genai_app_configuration_definition = {
     enable_diagnostic_settings = false
   }

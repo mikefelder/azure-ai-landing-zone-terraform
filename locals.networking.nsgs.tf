@@ -80,6 +80,98 @@ locals {
     }
 
   }
+  # Azure Bastion requires specific NSG rules to function.
+  # Reference: https://learn.microsoft.com/en-us/azure/bastion/bastion-nsg
+  bastion_nsg_rules = {
+    "bastion_inbound_internet" = {
+      name                       = "Allow-Https-Inbound"
+      access                     = "Allow"
+      destination_address_prefix = "*"
+      destination_port_range     = "443"
+      direction                  = "Inbound"
+      priority                   = 120
+      protocol                   = "Tcp"
+      source_address_prefix      = "Internet"
+      source_port_range          = "*"
+    }
+    "bastion_inbound_gateway_manager" = {
+      name                       = "Allow-GatewayManager-Inbound"
+      access                     = "Allow"
+      destination_address_prefix = "*"
+      destination_port_range     = "443"
+      direction                  = "Inbound"
+      priority                   = 130
+      protocol                   = "Tcp"
+      source_address_prefix      = "GatewayManager"
+      source_port_range          = "*"
+    }
+    "bastion_inbound_load_balancer" = {
+      name                       = "Allow-AzureLoadBalancer-Inbound"
+      access                     = "Allow"
+      destination_address_prefix = "*"
+      destination_port_range     = "443"
+      direction                  = "Inbound"
+      priority                   = 140
+      protocol                   = "Tcp"
+      source_address_prefix      = "AzureLoadBalancer"
+      source_port_range          = "*"
+    }
+    "bastion_inbound_host_communication" = {
+      name                       = "Allow-BastionHostCommunication-Inbound"
+      access                     = "Allow"
+      destination_address_prefix = "VirtualNetwork"
+      destination_port_ranges    = ["8080", "5701"]
+      direction                  = "Inbound"
+      priority                   = 150
+      protocol                   = "*"
+      source_address_prefix      = "VirtualNetwork"
+      source_port_range          = "*"
+    }
+    "bastion_outbound_ssh_rdp" = {
+      name                       = "Allow-SSH-RDP-Outbound"
+      access                     = "Allow"
+      destination_address_prefix = "VirtualNetwork"
+      destination_port_ranges    = ["22", "3389"]
+      direction                  = "Outbound"
+      priority                   = 100
+      protocol                   = "Tcp"
+      source_address_prefix      = "*"
+      source_port_range          = "*"
+    }
+    "bastion_outbound_azure_cloud" = {
+      name                       = "Allow-AzureCloud-Outbound"
+      access                     = "Allow"
+      destination_address_prefix = "AzureCloud"
+      destination_port_range     = "443"
+      direction                  = "Outbound"
+      priority                   = 110
+      protocol                   = "Tcp"
+      source_address_prefix      = "*"
+      source_port_range          = "*"
+    }
+    "bastion_outbound_host_communication" = {
+      name                       = "Allow-BastionHostCommunication-Outbound"
+      access                     = "Allow"
+      destination_address_prefix = "VirtualNetwork"
+      destination_port_ranges    = ["8080", "5701"]
+      direction                  = "Outbound"
+      priority                   = 120
+      protocol                   = "*"
+      source_address_prefix      = "VirtualNetwork"
+      source_port_range          = "*"
+    }
+    "bastion_outbound_get_session_info" = {
+      name                       = "Allow-GetSessionInformation-Outbound"
+      access                     = "Allow"
+      destination_address_prefix = "Internet"
+      destination_port_range     = "80"
+      direction                  = "Outbound"
+      priority                   = 130
+      protocol                   = "*"
+      source_address_prefix      = "*"
+      source_port_range          = "*"
+    }
+  }
   nsg_name = try(var.nsgs_definition.name, null) != null ? var.nsgs_definition.name : (var.name_prefix != null ? "${var.name_prefix}-ai-alz-nsg" : "ai-alz-nsg")
   nsg_rules = merge(
     local.base_nsg_rules,

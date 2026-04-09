@@ -117,7 +117,7 @@ locals {
   subnet_ids       = length(var.vnet_definition.existing_byo_vnet) > 0 ? { for key, m in module.byo_subnets : key => try(m.resource_id, m.id) } : { for key, s in module.ai_lz_vnet[0].subnets : key => s.resource_id }
   subnets = {
     AzureBastionSubnet = {
-      enabled = var.flag_platform_landing_zone == true ? try(local.subnets_definition["AzureBastionSubnet"].enabled, true) : try(local.subnets_definition["AzureBastionSubnet"].enabled, false)
+      enabled = try(local.subnets_definition["AzureBastionSubnet"].enabled, var.bastion_definition.deploy)
       name    = "AzureBastionSubnet"
       address_prefixes = (var.vnet_definition.ipam_pools == null ?
         try(local.subnets_definition["AzureBastionSubnet"].address_prefix, null) != null ?
@@ -133,9 +133,9 @@ locals {
         }]
       : null)
       route_table = null
-      #network_security_group = {
-      #  id = module.nsgs.resource_id
-      #}
+      network_security_group = {
+        id = module.bastion_nsg[0].resource_id
+      }
     }
     AzureFirewallSubnet = {
       enabled = var.flag_platform_landing_zone == true ? try(local.subnets_definition["AzureFirewallSubnet"].enabled, true) : try(local.subnets_definition["AzureFirewallSubnet"].enabled, false)
@@ -156,7 +156,7 @@ locals {
       route_table = null
     }
     JumpboxSubnet = {
-      enabled = var.flag_platform_landing_zone == true ? try(local.subnets_definition["JumpboxSubnet"].enabled, true) : try(local.subnets_definition["JumpboxSubnet"].enabled, false)
+      enabled = try(local.subnets_definition["JumpboxSubnet"].enabled, var.jumpvm_definition.deploy)
       name    = try(local.subnets_definition["JumpboxSubnet"].name, null) != null ? local.subnets_definition["JumpboxSubnet"].name : "JumpboxSubnet"
       address_prefixes = (var.vnet_definition.ipam_pools == null ?
         try(local.subnets_definition["JumpboxSubnet"].address_prefix, null) != null ?
