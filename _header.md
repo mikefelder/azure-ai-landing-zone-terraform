@@ -45,3 +45,20 @@ Jump VM (JumpboxSubnet + NSG)
 When `flag_platform_landing_zone = true`, the module deploys an Azure Firewall with a UDR routing `0.0.0.0/0` through the firewall for all subnets. Because [UDRs with 0.0.0.0/0 override NAT Gateway](https://learn.microsoft.com/en-us/azure/nat-gateway/nat-gateway-resource), enabling the NAT Gateway automatically removes the firewall route table from the JumpboxSubnet so that outbound traffic flows through the NAT Gateway. The NSG remains applied. All other subnets continue to route through the firewall.
 
 If you require firewall inspection on the jumpbox outbound traffic instead, keep `nat_gateway_definition.deploy = false` (the default) and configure the appropriate firewall application rules for the required destinations.
+
+## Change Log
+
+### 2026-04-10
+
+**Added NAT Gateway for jumpbox outbound internet access**
+
+The jump VM deployed via Bastion previously had no outbound internet connectivity, limiting its usefulness for development teams who need to access the Azure Portal, install tooling, or work on AI POC use cases.
+
+**Files changed:**
+
+- `variables.networking.tf` — Added `nat_gateway_definition` variable with `deploy`, `name`, `resource_group_name`, `tags`, `enable_telemetry`, `idle_timeout_in_minutes`, and `zones` options. Defaults to `deploy = false` (opt-in).
+- `locals.networking.tf` — Added `nat_gateway_name` local for consistent naming. Added `nat_gateway` association to the `JumpboxSubnet` definition. Added guard to exclude the firewall route table from `JumpboxSubnet` when the NAT Gateway is deployed, since UDRs with `0.0.0.0/0` next hop override NAT Gateway per Azure documentation.
+- `main.networking.tf` — Added `module "nat_gateway"` using `Azure/avm-res-network-natgateway/azurerm` v0.2.1 (matching the existing pattern in `modules/example_hub_vnet`). Creates the NAT Gateway with a public IP, gated by `count`.
+- `outputs.networking.tf` — Added `nat_gateway` output exposing the deployed resource.
+- `examples/standalone/main.tf` — Enabled the NAT Gateway in the standalone example with `nat_gateway_definition = { deploy = true }`.
+- `_header.md` — Added documentation for the NAT Gateway feature, access pattern, and firewall routing behavior.
