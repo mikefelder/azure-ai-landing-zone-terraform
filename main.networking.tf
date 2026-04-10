@@ -148,6 +148,24 @@ module "firewall_route_table" {
   }
 }
 
+module "nat_gateway" {
+  source  = "Azure/avm-res-network-natgateway/azurerm"
+  version = "0.2.1"
+  count   = var.nat_gateway_definition.deploy ? 1 : 0
+
+  location            = azurerm_resource_group.this.location
+  name                = local.nat_gateway_name
+  resource_group_name = var.nat_gateway_definition.resource_group_name != null ? var.nat_gateway_definition.resource_group_name : azurerm_resource_group.this.name
+  enable_telemetry    = var.nat_gateway_definition.enable_telemetry
+  public_ips = {
+    nat_gateway_pip = {
+      name  = "${local.nat_gateway_name}-pip"
+      zones = var.nat_gateway_definition.zones != null ? var.nat_gateway_definition.zones : local.region_zones
+    }
+  }
+  tags = var.nat_gateway_definition.tags
+}
+
 module "fw_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"

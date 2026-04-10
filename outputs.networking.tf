@@ -1,3 +1,8 @@
+output "nat_gateway" {
+  description = "The deployed NAT Gateway resource in the AI PTN LZA."
+  value       = var.nat_gateway_definition.deploy ? module.nat_gateway[0] : null
+}
+
 output "subnets" {
   description = "A map of the deployed subnets in the AI PTN LZA."
   value = { for key, value in local.deployed_subnets : key => merge(

@@ -225,6 +225,9 @@ module "test" {
     deploy = true
     sku    = module.vm_sku.sku
   }
+  nat_gateway_definition = {
+    deploy = true
+  }
   genai_app_configuration_definition = {
     enable_diagnostic_settings = false
   }

@@ -685,6 +685,40 @@ Configuration object for Private DNS Zones and their network links.
 DESCRIPTION
 }
 
+variable "nat_gateway_definition" {
+  type = object({
+    deploy                  = optional(bool, false)
+    name                    = optional(string)
+    resource_group_name     = optional(string)
+    tags                    = optional(map(string), {})
+    enable_telemetry        = optional(bool, true)
+    idle_timeout_in_minutes = optional(number, 4)
+    zones                   = optional(set(string))
+  })
+  default     = {}
+  description = <<DESCRIPTION
+Configuration object for the NAT Gateway to provide outbound internet access for the Jumpbox subnet.
+
+When deployed, the NAT Gateway is associated with the JumpboxSubnet to provide SNAT-based outbound
+internet connectivity. This enables the jump VM to access the Azure Portal, install tools, and
+perform development tasks.
+
+**Important**: When `flag_platform_landing_zone = true`, the firewall route table (0.0.0.0/0 via
+Azure Firewall) is normally applied to the JumpboxSubnet. Because UDRs with 0.0.0.0/0 next hop
+override NAT Gateway, deploying the NAT Gateway automatically removes the firewall route table
+from the JumpboxSubnet so that outbound traffic flows through the NAT Gateway instead. The NSG
+remains applied to the subnet.
+
+- `deploy` - (Optional) Whether to deploy the NAT Gateway. Default is false.
+- `name` - (Optional) The name of the NAT Gateway. If not provided, a name will be generated.
+- `resource_group_name` - (Optional) The name of the resource group where the NAT Gateway will be deployed. Defaults to the module resource group.
+- `tags` - (Optional) Map of tags to assign to the NAT Gateway resources.
+- `enable_telemetry` - (Optional) Whether telemetry is enabled for the NAT Gateway module. Default is true.
+- `idle_timeout_in_minutes` - (Optional) The idle timeout in minutes for the NAT Gateway. Default is 4.
+- `zones` - (Optional) Availability zones for the NAT Gateway and its public IP.
+DESCRIPTION
+}
+
 variable "use_internet_routing" {
   type        = bool
   default     = false

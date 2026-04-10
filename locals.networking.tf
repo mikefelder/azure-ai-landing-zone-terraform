@@ -42,6 +42,7 @@ locals {
   }
   deployed_subnets = { for subnet_name, subnet in local.subnets : subnet_name => subnet if subnet.enabled }
   firewall_name    = try(var.firewall_definition.name, null) != null ? var.firewall_definition.name : (var.name_prefix != null ? "${var.name_prefix}-fw" : "ai-alz-fw")
+  nat_gateway_name = try(var.nat_gateway_definition.name, null) != null ? var.nat_gateway_definition.name : (var.name_prefix != null ? "${var.name_prefix}-natgw" : "ai-alz-natgw")
   private_dns_zone_map = {
     key_vault_zone = {
       name = "privatelink.vaultcore.azure.net"
@@ -171,8 +172,12 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      nat_gateway = var.nat_gateway_definition.deploy ? {
+        id = module.nat_gateway[0].resource_id
+      } : null
+      route_table = (!var.nat_gateway_definition.deploy &&
+        ((var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
+        (var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null))) ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
