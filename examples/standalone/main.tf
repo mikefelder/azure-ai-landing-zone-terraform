@@ -214,7 +214,7 @@ module "test" {
     }
   }
   bastion_definition = {
-    deploy = true
+    deploy = false
   }
   container_app_environment_definition = {
     enable_diagnostic_settings = false
@@ -222,7 +222,7 @@ module "test" {
   enable_telemetry           = var.enable_telemetry
   flag_platform_landing_zone = false
   jumpvm_definition = {
-    deploy = true
+    deploy = false
     sku    = module.vm_sku.sku
   }
   nat_gateway_definition = {

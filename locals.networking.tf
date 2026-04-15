@@ -134,9 +134,9 @@ locals {
         }]
       : null)
       route_table = null
-      network_security_group = {
+      network_security_group = var.bastion_definition.deploy ? {
         id = module.bastion_nsg[0].resource_id
-      }
+      } : null
     }
     AzureFirewallSubnet = {
       enabled = var.flag_platform_landing_zone == true ? try(local.subnets_definition["AzureFirewallSubnet"].enabled, true) : try(local.subnets_definition["AzureFirewallSubnet"].enabled, false)

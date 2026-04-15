@@ -239,7 +239,7 @@ module "bastion_nsg" {
 
 # Bastion NSG rules must be created after the NSG but use known values, so they can be defined inline.
 resource "azurerm_network_security_rule" "bastion" {
-  for_each = var.bastion_definition.deploy ? local.bastion_nsg_rules : {}
+  for_each = { for k, v in local.bastion_nsg_rules : k => v if var.bastion_definition.deploy }
 
   access                                     = each.value.access
   direction                                  = each.value.direction
