@@ -68,7 +68,8 @@ data "http" "ip" {
 }
 
 locals {
-  location = var.location
+  location            = var.location
+  resource_group_name = "ai-lz-rg-standalone-${substr(module.naming.unique-seed, 0, 5)}"
 }
 
 data "azurerm_client_config" "current" {}
@@ -93,14 +94,15 @@ module "test" {
   source = "../../"
 
   location            = local.location
-  resource_group_name = "ai-lz-rg-standalone-${substr(module.naming.unique-seed, 0, 5)}"
+  resource_group_name = local.resource_group_name
   #resource_group_name = "ai-lz-rg-default-ivrhi-3"
   vnet_definition = {
     name          = "ai-lz-vnet-standalone"
     address_space = ["192.168.0.0/20"] # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
   }
   ai_foundry_definition = {
-    purge_on_destroy = true
+    create_private_endpoints = false
+    purge_on_destroy         = true
     ai_foundry = {
       create_ai_agent_service    = true
       enable_diagnostic_settings = false
@@ -116,6 +118,18 @@ module "test" {
         scale = {
           type     = "GlobalStandard"
           capacity = 1
+        }
+      }
+      "text-embedding-ada-002" = {
+        name = "text-embedding-ada-002"
+        model = {
+          format  = "OpenAI"
+          name    = "text-embedding-ada-002"
+          version = "2"
+        }
+        scale = {
+          type     = "Standard"
+          capacity = 120
         }
       }
     }
@@ -149,7 +163,8 @@ module "test" {
 
     cosmosdb_definition = {
       this = {
-        consistency_level = "Session"
+        consistency_level             = "Session"
+        public_network_access_enabled = true
       }
     }
 
@@ -229,16 +244,18 @@ module "test" {
     deploy = true
   }
   genai_app_configuration_definition = {
-    enable_diagnostic_settings = false
+    enable_diagnostic_settings    = false
+    public_network_access_enabled = true
   }
   genai_container_registry_definition = {
-    enable_diagnostic_settings = false
+    enable_diagnostic_settings    = false
+    public_network_access_enabled = true
   }
   genai_cosmosdb_definition = {
-    consistency_level = "Session"
+    consistency_level             = "Session"
+    public_network_access_enabled = true
   }
   genai_key_vault_definition = {
-    #this is for AVM testing purposes only. Doing this as we don't have an easy for the test runner to be privately connected for testing.
     public_network_access_enabled = true
     network_acls = {
       bypass   = "AzureServices"
@@ -246,8 +263,110 @@ module "test" {
     }
   }
   genai_storage_account_definition = {
+    public_network_access_enabled = true
   }
   ks_ai_search_definition = {
-    enable_diagnostic_settings = false
+    enable_diagnostic_settings    = false
+    public_network_access_enabled = true
   }
+}
+
+# --- Data sources for existing resources ---
+
+data "azurerm_cognitive_account" "ai_services" {
+  name                = module.test.ai_services_name
+  resource_group_name = local.resource_group_name
+}
+
+# --- PostgreSQL Flexible Server ---
+
+resource "random_password" "postgresql" {
+  length  = 32
+  special = true
+}
+
+module "postgresql" {
+  source  = "Azure/avm-res-dbforpostgresql-flexibleserver/azurerm"
+  version = "0.2.2"
+
+  name                = "ai-alz-pg-${module.test.name_suffix}"
+  location            = local.location
+  resource_group_name = local.resource_group_name
+
+  server_version = "16"
+  sku_name       = "B_Standard_B2ms"
+  storage_mb     = 32768
+
+  administrator_login    = "cwydsqladmin"
+  administrator_password = random_password.postgresql.result
+
+  high_availability             = null
+  public_network_access_enabled = true
+
+  databases = {
+    cwyd = {
+      name      = "cwyd"
+      charset   = "UTF8"
+      collation = "en_US.utf8"
+    }
+  }
+
+  authentication = {
+    active_directory_auth_enabled = true
+    password_auth_enabled         = true
+    tenant_id                     = data.azurerm_client_config.current.tenant_id
+  }
+
+  firewall_rules = {
+    allow_azure_services = {
+      name             = "AllowAzureServices"
+      start_ip_address = "0.0.0.0"
+      end_ip_address   = "0.0.0.0"
+    }
+  }
+
+  server_configuration = {
+    azure_extensions = {
+      name   = "azure.extensions"
+      config = "vector"
+    }
+  }
+
+  enable_telemetry = var.enable_telemetry
+
+  depends_on = [module.test]
+}
+
+# --- Application Insights ---
+
+module "application_insights" {
+  source  = "Azure/avm-res-insights-component/azurerm"
+  version = "0.3.0"
+
+  name                = "ai-alz-appinsights-${module.test.name_suffix}"
+  location            = local.location
+  resource_group_name = local.resource_group_name
+  workspace_id        = module.test.log_analytics_workspace_id
+  application_type    = "web"
+  enable_telemetry    = var.enable_telemetry
+
+  depends_on = [module.test]
+}
+
+# --- Key Vault Secrets ---
+
+resource "azurerm_key_vault_secret" "postgresql_password" {
+  name         = "postgresql-password"
+  value        = random_password.postgresql.result
+  key_vault_id = module.test.genai_key_vault_id
+
+  depends_on = [module.test]
+}
+
+resource "azurerm_key_vault_secret" "appinsights_connection_string" {
+  name         = "appinsights-connection-string"
+  value        = module.application_insights.connection_string
+  key_vault_id = module.test.genai_key_vault_id
+
+  depends_on = [module.test]
 }

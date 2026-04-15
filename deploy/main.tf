@@ -87,7 +87,7 @@ module "landing_zone" {
     address_space = ["192.168.0.0/20"] # Must be within 192.168.0.0/16 for Foundry capabilityHost injection
   }
   bastion_definition = {
-    deploy = false # No portal access, so Bastion is not usable
+    deploy = true
   }
   firewall_definition = {
     deploy = false # Skip firewall for PoC (~$900/mo savings)
@@ -127,9 +127,8 @@ module "landing_zone" {
   ai_foundry_definition = {
     purge_on_destroy = true # Easy cleanup for PoC
     ai_foundry = {
-      create_ai_agent_service       = true
-      enable_diagnostic_settings    = false
-      public_network_access_enabled = true
+      create_ai_agent_service    = true
+      enable_diagnostic_settings = false
     }
     ai_model_deployments = {
       "gpt-4.1" = {
@@ -252,11 +251,60 @@ module "landing_zone" {
 
   # --- VMs ---
   jumpvm_definition = {
-    deploy = false
+    deploy = true
     sku    = module.vm_sku.sku
   }
   buildvm_definition = {
     deploy = false # Skip build VM for PoC
+  }
+}
+
+# --- Point-to-Site VPN Gateway for private Foundry access ---
+
+# GatewaySubnet is required by Azure VPN Gateway
+resource "azurerm_subnet" "gateway" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = module.landing_zone.virtual_network.resource.name
+  address_prefixes     = [cidrsubnet("192.168.0.0/20", 7, 126)] # 192.168.15.128/27 - small subnet at end of range
+}
+
+resource "azurerm_public_ip" "vpn_gateway" {
+  name                = "${var.name_prefix}-vpngw-pip"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = var.tags
+}
+
+# Self-signed root certificate for P2S authentication
+resource "azurerm_virtual_network_gateway" "this" {
+  name                = "${var.name_prefix}-vpngw"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  type                = "Vpn"
+  vpn_type            = "RouteBased"
+  sku                 = "VpnGw1"
+  active_active       = false
+  tags                = var.tags
+
+  ip_configuration {
+    name                          = "vnetGatewayConfig"
+    public_ip_address_id          = azurerm_public_ip.vpn_gateway.id
+    private_ip_address_allocation = "Dynamic"
+    subnet_id                     = azurerm_subnet.gateway.id
+  }
+
+  vpn_client_configuration {
+    address_space        = ["172.16.0.0/24"]
+    vpn_client_protocols = ["OpenVPN"]
+    vpn_auth_types       = ["AAD"]
+
+    # Microsoft-registered Azure VPN Enterprise App for Entra ID auth
+    aad_tenant   = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/"
+    aad_audience = "c632b3df-fb67-4d84-bdcf-b95ad541b5c8"
+    aad_issuer   = "https://sts.windows.net/${data.azurerm_client_config.current.tenant_id}/"
   }
 }
 

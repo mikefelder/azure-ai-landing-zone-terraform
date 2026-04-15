@@ -13,7 +13,7 @@ module "foundry_ptn" {
   ai_search_definition                = local.foundry_ai_search_definition
   cosmosdb_definition                 = local.foundry_cosmosdb_definition
   create_byor                         = var.ai_foundry_definition.create_byor
-  create_private_endpoints            = true
+  create_private_endpoints            = var.ai_foundry_definition.create_private_endpoints
   diagnostic_settings                 = local.foundry_diagnostic_settings
   enable_telemetry                    = var.enable_telemetry
   key_vault_definition                = local.foundry_key_vault_definition
