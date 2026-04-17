@@ -55,3 +55,25 @@ output "embedding_deployment_name" {
   description = "The name of the text-embedding-ada-002 model deployment."
   value       = "text-embedding-ada-002"
 }
+
+# --- Container App Outputs ---
+
+output "SERVICE_WEB_RESOURCE_NAME" {
+  description = "The name of the web Container App."
+  value       = azurerm_container_app.web.name
+}
+
+output "SERVICE_ADMINWEB_RESOURCE_NAME" {
+  description = "The name of the admin web Container App."
+  value       = azurerm_container_app.adminweb.name
+}
+
+output "SERVICE_FUNCTION_RESOURCE_NAME" {
+  description = "The name of the function Container App."
+  value       = azurerm_container_app.function.name
+}
+
+output "AZURE_CONTAINER_REGISTRY_ENDPOINT" {
+  description = "The ACR login server endpoint."
+  value       = data.azurerm_container_registry.this.login_server
+}

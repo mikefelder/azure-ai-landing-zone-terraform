@@ -96,7 +96,7 @@ locals {
   region_zones_lookup = [for region in module.avm_utl_regions.regions : region if(lower(region.name) == lower(azurerm_resource_group.this.location) || (lower(region.display_name) == lower(azurerm_resource_group.this.location)))][0].zones
   subnets = {
     AzureBastionSubnet = {
-      enabled          = true
+      enabled          = var.deploy_bastion
       name             = "AzureBastionSubnet"
       address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 0)]
     }

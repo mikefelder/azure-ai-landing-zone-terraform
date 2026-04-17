@@ -65,6 +65,17 @@ Configuration object for the Build VM to be created for managing the implementat
 DESCRIPTION
 }
 
+variable "deploy_bastion" {
+  type        = bool
+  default     = true
+  description = <<DESCRIPTION
+Whether to deploy Azure Bastion and the AzureBastionSubnet.
+
+Set to false to skip Bastion deployment entirely, for example when an Azure Policy
+blocks the creation of the AzureBastionSubnet.
+DESCRIPTION
+}
+
 variable "name_prefix" {
   #TODO: add a validation rule to keep this under 10 characters only alphanumeric lowercase
   type        = string

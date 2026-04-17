@@ -49,6 +49,7 @@ module "natgateway" {
 module "bastion_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"
+  count   = var.deploy_bastion ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = "${local.bastion_name}-pip"
@@ -58,6 +59,8 @@ module "bastion_pip" {
 }
 
 resource "azurerm_bastion_host" "bastion" {
+  count               = var.deploy_bastion ? 1 : 0
+
   location            = azurerm_resource_group.this.location
   name                = local.bastion_name
   resource_group_name = azurerm_resource_group.this.name
@@ -65,7 +68,7 @@ resource "azurerm_bastion_host" "bastion" {
 
   ip_configuration {
     name                 = "${local.bastion_name}-ipconf"
-    public_ip_address_id = module.bastion_pip.resource_id
+    public_ip_address_id = module.bastion_pip[0].resource_id
     subnet_id            = module.ai_lz_vnet.subnets["AzureBastionSubnet"].resource_id
   }
 }
@@ -227,12 +230,7 @@ module "avm_res_keyvault_vault" {
     bypass         = "AzureServices"
     ip_rules       = [var.deployer_ip_address]
   }
-  role_assignments = {
-    deployment_user_secrets = { #give the deployment user access to secrets
-      role_definition_id_or_name = "Key Vault Secrets Officer"
-      principal_id               = data.azurerm_client_config.current.object_id
-    }
-  }
+  public_network_access_enabled = true
   wait_for_rbac_before_contact_operations = {
     create = "60s"
   }
@@ -244,12 +242,18 @@ module "avm_res_keyvault_vault" {
   }
 }
 
+# Role assignment created outside the KV module for explicit dependency ordering.
+resource "azurerm_role_assignment" "deployment_user_kv_admin" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  scope                = module.avm_res_keyvault_vault.resource_id
+  role_definition_name = "Key Vault Administrator"
+}
+
 resource "time_sleep" "wait_for_kv_rbac" {
   create_duration = "60s"
   triggers = {
-    role_assignments = jsonencode(module.avm_res_keyvault_vault.resource_id)
-    principal_id     = data.azurerm_client_config.current.object_id
+    role_assignment = azurerm_role_assignment.deployment_user_kv_admin.id
   }
 
-  depends_on = [module.avm_res_keyvault_vault]
+  depends_on = [azurerm_role_assignment.deployment_user_kv_admin]
 }
